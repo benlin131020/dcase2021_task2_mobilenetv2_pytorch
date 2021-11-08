@@ -29,7 +29,7 @@ $ pip install -r requirements.txt
 ```
 
 ### 4. Run
-指定使用第幾顆 GPU
+`CUDA_VISIBLE_DEVICES=1` 指定使用第幾顆 GPU
 ```
 $ CUDA_VISIBLE_DEVICES=1 bash run.sh
 ```
