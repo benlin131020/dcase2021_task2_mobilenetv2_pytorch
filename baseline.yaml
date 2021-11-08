@@ -1,7 +1,10 @@
 dev_directory: ../dev_data
 eval_directory: ../eval_data
-model_directory: ./model
-result_directory: ./result
+exp_directory: ./exp/linear
+model_directory: model
+result_directory: result_lof
+emb_directory: emb
+im_directory: lof
 result_file: result.csv
 
 max_fpr: 0.1
@@ -14,6 +17,7 @@ feature:
   n_fft: 1024
   hop_length: 512
   power: 2.0
+  linear: 0
 
 fit:
   lr: 0.00001

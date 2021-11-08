@@ -33,7 +33,6 @@ from model import MobileNetV2Cus
 ########################################################################
 param = com.yaml_load()
 ml_name = "lof"
-param["result_directory"] = param["result_directory"] + "_{}".format(ml_name)
 #######################################################################
 
 
@@ -62,7 +61,8 @@ if __name__ == "__main__":
         sys.exit(-1)
 
     # make output result directory
-    os.makedirs(param["result_directory"], exist_ok=True)
+    result_path = "{exp}/{result}".format(exp=param["exp_directory"], result=param["result_directory"])
+    os.makedirs(result_path, exist_ok=True)
 
     # load base directory
     dirs = com.select_dirs(param=param, mode=mode)
@@ -83,8 +83,9 @@ if __name__ == "__main__":
 
         print("============== MODEL LOAD ==============")
         # load model file
-        model_file = "model/model_{machine_type}.pt".format(model=param["model_directory"],
-                                                                machine_type=machine_type)
+        model_path = os.path.join(param["exp_directory"], param["model_directory"])
+        model_file = "{model}/model_{machine_type}.pt".format(model=os.path.join(param["exp_directory"], param["model_directory"]),
+                                                                     machine_type=machine_type)
         if not os.path.exists(model_file):            
             com.logger.error("{} model not found ".format(machine_type))
             break
@@ -97,19 +98,19 @@ if __name__ == "__main__":
         # model.load_state_dict(checkpoint['model_state_dict'])
         model.to(device)
         model.eval()
-        ml0 = joblib.load("{}/{}_0.joblib".format(ml_name, machine_type))
-        ml1 = joblib.load("{}/{}_1.joblib".format(ml_name, machine_type))
-        ml2 = joblib.load("{}/{}_2.joblib".format(ml_name, machine_type))
+        ml0 = joblib.load("{}/{}/{}_0.joblib".format(param["exp_directory"], param["im_directory"], machine_type))
+        ml1 = joblib.load("{}/{}/{}_1.joblib".format(param["exp_directory"], param["im_directory"], machine_type))
+        ml2 = joblib.load("{}/{}/{}_2.joblib".format(param["exp_directory"], param["im_directory"], machine_type))
 
         # load section names for conditioning
-        section_names_file_path = "{model}/section_names_{machine_type}.pkl".format(model=param["model_directory"],
+        section_names_file_path = "{model}/section_names_{machine_type}.pkl".format(model=model_path,
                                                                           machine_type=machine_type)
         trained_section_names = joblib.load(section_names_file_path)
         n_sections = trained_section_names.shape[0]
         print(n_sections)
         
         # load anomaly score distribution for determining threshold
-        score_distr_file_path = "{model}/score_distr_{machine_type}.pkl".format(model=param["model_directory"],
+        score_distr_file_path = "{model}/score_distr_{machine_type}.pkl".format(model=model_path,
                                                                     machine_type=machine_type)
         shape_hat, loc_hat, scale_hat = joblib.load(score_distr_file_path)
 
@@ -146,14 +147,14 @@ if __name__ == "__main__":
                                                         mode=mode)
 
                 # setup anomaly score file path
-                anomaly_score_csv = "{result}/anomaly_score_{machine_type}_{section_name}_{dir_name}.csv".format(result=param["result_directory"],
+                anomaly_score_csv = "{result}/anomaly_score_{machine_type}_{section_name}_{dir_name}.csv".format(result=result_path,
                                                                                                                  machine_type=machine_type,
                                                                                                                  section_name=section_name,
                                                                                                                  dir_name=dir_name)
                 anomaly_score_list = []
 
                 # setup decision result file path
-                decision_result_csv = "{result}/decision_result_{machine_type}_{section_name}_{dir_name}.csv".format(result=param["result_directory"],
+                decision_result_csv = "{result}/decision_result_{machine_type}_{section_name}_{dir_name}.csv".format(result=result_path,
                                                                                                                      machine_type=machine_type,
                                                                                                                      section_name=section_name,
                                                                                                                      dir_name=dir_name)
@@ -163,7 +164,15 @@ if __name__ == "__main__":
                 y_pred = [0. for k in files]
                 for file_idx, file_path in tqdm(enumerate(files), total=len(files)):
                     try:
-                        data = com.file_to_vectors(file_path,
+                        if param["feature"]["linear"] == 0:
+                            data = com.file_to_vectors(file_path,
+                                                        n_mels=param["feature"]["n_mels"],
+                                                        n_frames=param["feature"]["n_frames"],
+                                                        n_fft=param["feature"]["n_fft"],
+                                                        hop_length=param["feature"]["hop_length"],
+                                                        power=param["feature"]["power"])
+                        else:
+                            data = com.file_to_vectors_linear(file_path,
                                                         n_mels=param["feature"]["n_mels"],
                                                         n_frames=param["feature"]["n_frames"],
                                                         n_fft=param["feature"]["n_fft"],
@@ -253,6 +262,7 @@ if __name__ == "__main__":
         csv_lines.append([])
         
         # output results
-        result_path = "{result}/{file_name}".format(result=param["result_directory"], file_name=param["result_file"])
+        result_path = "{exp}/{result}/{file_name}".format(exp=param["exp_directory"], result=param["result_directory"], file_name=param["result_file"])
+
         com.logger.info("results -> {}".format(result_path))
         save_csv(save_file_path=result_path, save_data=csv_lines)

@@ -15,6 +15,7 @@ import librosa
 import librosa.core
 import librosa.feature
 import yaml
+from spafe.fbanks import linear_fbanks
 
 ########################################################################
 
@@ -153,6 +154,48 @@ def file_to_vectors(file_name,
 
     return vectors
 
+def file_to_vectors_linear(file_name,
+                    n_mels=64,
+                    n_frames=5,
+                    n_fft=1024,
+                    hop_length=512,
+                    power=2.0):
+    """
+    convert file_name to a vector array.
+
+    file_name : str
+        target .wav file
+
+    return : numpy.array( numpy.array( float ) )
+        vector array
+        * dataset.shape = (dataset_size, feature_vector_length)
+    """
+    # calculate the number of dimensions
+    dims = n_mels * n_frames
+
+    # generate melspectrogram using librosa
+    y, sr = file_load(file_name, mono=True)
+    fft_windows = librosa.stft(y, n_fft=n_fft, hop_length=hop_length)
+    magnitude = np.abs(fft_windows)**2
+    lin = linear_fbanks.linear_filter_banks(nfilts=n_mels, nfft=n_fft, fs=sr)
+    lin_spec = lin.dot(magnitude)
+    
+    # convert melspectrogram to log mel energies
+    log_mel_spectrogram = 20.0 / power * np.log10(np.maximum(lin_spec, sys.float_info.epsilon))
+
+    # calculate total vector size
+    n_vectors = len(log_mel_spectrogram[0, :]) - n_frames + 1
+
+    # skip too short clips
+    if n_vectors < 1:
+        return np.empty((0, dims))
+
+    # generate feature vectors by concatenating multiframes
+    vectors = np.zeros((n_vectors, dims))
+    for t in range(n_frames):
+        vectors[:, n_mels * t : n_mels * (t + 1)] = log_mel_spectrogram[:, t : t + n_vectors].T
+
+    return vectors
 
 ########################################################################
 

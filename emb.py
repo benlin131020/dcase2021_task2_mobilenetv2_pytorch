@@ -48,7 +48,8 @@ def file_list_to_data(file_list,
                       n_hop_frames=1,
                       n_fft=1024,
                       hop_length=512,
-                      power=2.0):
+                      power=2.0,
+                      linear=0):
     """
     convert the file_list to a vector array.
     file_to_vector_array() is iterated, and the output vector array is concatenated.
@@ -68,7 +69,15 @@ def file_list_to_data(file_list,
 
     # iterate file_to_vector_array()
     for idx in tqdm(range(len(file_list)), desc=msg):
-        vectors = com.file_to_vectors(file_list[idx],
+        if linear == 0:
+            vectors = com.file_to_vectors(file_list[idx],
+                                                n_mels=n_mels,
+                                                n_frames=n_frames,
+                                                n_fft=n_fft,
+                                                hop_length=hop_length,
+                                                power=power)
+        else:
+            vectors = com.file_to_vectors_linear(file_list[idx],
                                                 n_mels=n_mels,
                                                 n_frames=n_frames,
                                                 n_fft=n_fft,
@@ -97,7 +106,8 @@ if __name__ == "__main__":
         sys.exit(-1)
         
     # make output directory
-    os.makedirs(param["model_directory"], exist_ok=True)
+    model_path = os.path.join(param["exp_directory"], param["model_directory"])
+    os.makedirs(model_path, exist_ok=True)
 
     # load base_directory list
     dirs = com.select_dirs(param=param, mode=mode)
@@ -110,11 +120,11 @@ if __name__ == "__main__":
 
         # set path
         machine_type = os.path.split(target_dir)[1]
-        model_file_path = "{model}/model_{machine_type}.pt".format(model=param["model_directory"],
+        model_file_path = "{model}/model_{machine_type}.pt".format(model=model_path,
                                                                      machine_type=machine_type)
       
         # pickle file for storing section names
-        section_names_file_path = "{model}/section_names_{machine_type}.pkl".format(model=param["model_directory"],
+        section_names_file_path = "{model}/section_names_{machine_type}.pkl".format(model=model_path,
                                                                                     machine_type=machine_type)
         
         # get section names from wave file names
@@ -144,8 +154,8 @@ if __name__ == "__main__":
         for section_idx, section_name in enumerate(unique_section_names):
             if section_idx == 3 or section_idx == 4 or section_idx == 5:
                 continue
-
-            emb_path = "emb/{}_{}/".format(machine_type, section_idx)
+            
+            emb_path = os.path.join(param["exp_directory"], param["emb_directory"], "{}_{}".format(machine_type, section_idx))
             if not os.path.exists(emb_path):
                 os.makedirs(emb_path)
 
@@ -165,7 +175,8 @@ if __name__ == "__main__":
                                                 n_hop_frames=param["feature"]["n_hop_frames"],
                                                 n_fft=param["feature"]["n_fft"],
                                                 hop_length=param["feature"]["hop_length"],
-                                                power=param["feature"]["power"])
+                                                power=param["feature"]["power"],
+                                                linear=param["feature"]["linear"])
 
             # data = np.append(data, data_ea_section, axis=0)
 
