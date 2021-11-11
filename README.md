@@ -22,6 +22,12 @@ $ conda activate myenv
 $ conda deactivate
 ```
 
+如果 conda 版本較舊
+```
+$ source activate myenv
+$ source deactivate
+```
+
 ### 3. 安裝 Python 套件
 進入 Python 環境後
 ```
